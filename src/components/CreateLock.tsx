@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Edit2, Link2, Plus, Rocket, Share2, Copy, CheckCircle2, X } from 'lucide-react';
 import { PlatformId, LockConfig, Task } from '../types';
@@ -19,6 +19,18 @@ export default function CreateLock() {
 
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [urlHistory, setUrlHistory] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('urlHistory');
+    if (savedHistory) {
+      try {
+        setUrlHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to parse URL history');
+      }
+    }
+  }, []);
 
   const handleTaskChange = (index: number, field: keyof Task, value: string) => {
     const newTasks = [...config.tasks];
@@ -50,6 +62,21 @@ export default function CreateLock() {
     const randomRating = ratings[Math.floor(Math.random() * ratings.length)];
     const downloads = 1200;
     
+    // Save URLs to history
+    const newHistory = { ...urlHistory };
+    config.tasks.forEach(task => {
+      if (task.url) {
+        if (!newHistory[task.platform]) {
+          newHistory[task.platform] = [];
+        }
+        if (!newHistory[task.platform].includes(task.url)) {
+          newHistory[task.platform] = [task.url, ...newHistory[task.platform]].slice(0, 10);
+        }
+      }
+    });
+    setUrlHistory(newHistory);
+    localStorage.setItem('urlHistory', JSON.stringify(newHistory));
+
     const finalConfig = { ...config, rating: randomRating, downloads };
     const encodedConfig = encodeURIComponent(JSON.stringify(finalConfig));
     const link = `${window.location.origin}/view?data=${encodedConfig}`;
@@ -246,11 +273,17 @@ export default function CreateLock() {
                       <input
                         type="url"
                         required
+                        list={`url-history-${task.platform}-${index}`}
                         value={task.url}
                         onChange={(e) => handleTaskChange(index, 'url', e.target.value)}
                         className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                         placeholder="https://..."
                       />
+                      <datalist id={`url-history-${task.platform}-${index}`}>
+                        {urlHistory[task.platform]?.map((url, i) => (
+                          <option key={i} value={url} />
+                        ))}
+                      </datalist>
                     </div>
                   </div>
                   
