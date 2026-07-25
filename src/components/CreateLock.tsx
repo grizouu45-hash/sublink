@@ -20,6 +20,7 @@ export default function CreateLock() {
 
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [urlHistory, setUrlHistory] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
@@ -57,31 +58,63 @@ export default function CreateLock() {
     }
   };
 
-  const generateLock = (e: React.FormEvent) => {
+  const generateLock = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ratings = [4.6, 4.7, 4.8, 4.9, 5.0];
-    const randomRating = ratings[Math.floor(Math.random() * ratings.length)];
-    const downloads = Math.floor(Math.random() * 5001) + 5000;
+    setIsGenerating(true);
     
-    // Save URLs to history
-    const newHistory = { ...urlHistory };
-    config.tasks.forEach(task => {
-      if (task.url) {
-        if (!newHistory[task.platform]) {
-          newHistory[task.platform] = [];
+    try {
+      const ratings = [4.6, 4.7, 4.8, 4.9, 5.0];
+      const randomRating = ratings[Math.floor(Math.random() * ratings.length)];
+      const downloads = Math.floor(Math.random() * 5001) + 5000;
+      
+      // Save URLs to history
+      const newHistory = { ...urlHistory };
+      config.tasks.forEach(task => {
+        if (task.url) {
+          if (!newHistory[task.platform]) {
+            newHistory[task.platform] = [];
+          }
+          if (!newHistory[task.platform].includes(task.url)) {
+            newHistory[task.platform] = [task.url, ...newHistory[task.platform]].slice(0, 10);
+          }
         }
-        if (!newHistory[task.platform].includes(task.url)) {
-          newHistory[task.platform] = [task.url, ...newHistory[task.platform]].slice(0, 10);
+      });
+      setUrlHistory(newHistory);
+      localStorage.setItem('urlHistory', JSON.stringify(newHistory));
+
+      const finalConfig = { ...config, rating: randomRating, downloads };
+      const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(finalConfig));
+      const longLink = `${window.location.origin}/view?c=${compressed}`;
+      
+      let finalLink = longLink;
+      
+      try {
+        // Try is.gd first
+        const isGdRes = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longLink)}`);
+        const isGdData = await isGdRes.json();
+        if (isGdData.shorturl) {
+          finalLink = isGdData.shorturl;
+        } else {
+          throw new Error('is.gd failed');
+        }
+      } catch (err) {
+        try {
+          // Fallback to tinyurl with corsproxy
+          const tinyUrlReq = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longLink)}`;
+          const proxyRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(tinyUrlReq)}`);
+          const shortUrl = await proxyRes.text();
+          if (shortUrl && shortUrl.startsWith('http')) {
+            finalLink = shortUrl;
+          }
+        } catch (fallbackErr) {
+          console.warn('URL shortening failed, using long link');
         }
       }
-    });
-    setUrlHistory(newHistory);
-    localStorage.setItem('urlHistory', JSON.stringify(newHistory));
 
-    const finalConfig = { ...config, rating: randomRating, downloads };
-    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(finalConfig));
-    const link = `${window.location.origin}/view?c=${compressed}`;
-    setGeneratedLink(link);
+      setGeneratedLink(finalLink);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyToClipboard = async () => {
@@ -181,7 +214,7 @@ export default function CreateLock() {
                 value={config.description}
                 onChange={(e) => setConfig({ ...config, description: e.target.value })}
                 className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors min-h-[100px]"
-                placeholder="Örn. ŞARTLARI YERİNE GETİRİN VE AÇILAN LİNKE GİDİN"
+                placeholder="Örn. LİNKE ULAŞMAK İÇİN GÖREVLERİ TAMAMLAYIN!"
               />
             </div>
 
@@ -320,10 +353,24 @@ export default function CreateLock() {
           <div className="pt-6">
             <button
               type="submit"
-              className="w-full px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 transition-all uppercase tracking-wider"
+              disabled={isGenerating}
+              className={cn(
+                "w-full px-6 py-4 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all uppercase tracking-wider",
+                isGenerating ? "bg-red-600/50 cursor-not-allowed shadow-none" : "bg-red-600 hover:bg-red-700 shadow-red-600/20"
+              )}
             >
-              <Rocket className="w-5 h-5" />
-              Link Oluştur
+              {isGenerating ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  Oluşturuluyor...
+                </>
+              ) : (
+                <>
+                  <input type="hidden" />
+                  <Rocket className="w-5 h-5" />
+                  Link Oluştur
+                </>
+              )}
             </button>
           </div>
         </form>
