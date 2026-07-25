@@ -224,7 +224,7 @@ export default function ViewLock() {
             <div className="flex items-center gap-2 text-zinc-400">
                <Download className="w-5 h-5" />
                <span className="font-bold text-white text-base">
-                 {new Intl.NumberFormat('tr-TR').format(config.downloads || 1200)}
+                 {new Intl.NumberFormat('tr-TR').format(config.downloads || 5432)}+
                </span>
                <span className="text-xs font-medium uppercase tracking-wider">İndirme</span>
             </div>

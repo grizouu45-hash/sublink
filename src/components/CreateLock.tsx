@@ -60,7 +60,7 @@ export default function CreateLock() {
     e.preventDefault();
     const ratings = [4.6, 4.7, 4.8, 4.9, 5.0];
     const randomRating = ratings[Math.floor(Math.random() * ratings.length)];
-    const downloads = 1200;
+    const downloads = Math.floor(Math.random() * 5001) + 5000;
     
     // Save URLs to history
     const newHistory = { ...urlHistory };
