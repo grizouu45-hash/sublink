@@ -4,6 +4,7 @@ import { LockConfig, Task } from '../types';
 import { platforms } from '../data';
 import { CheckCircle2, Lock, Unlock, Link2, Loader2, Star, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
+import LZString from 'lz-string';
 
 export default function ViewLock() {
   const location = useLocation();
@@ -18,7 +19,21 @@ export default function ViewLock() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const data = params.get('data');
-    if (data) {
+    const compressedData = params.get('c');
+    
+    if (compressedData) {
+      try {
+        const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+        if (decompressed) {
+          setConfig(JSON.parse(decompressed));
+        } else {
+          navigate('/');
+        }
+      } catch (e) {
+        console.error("Invalid compressed config data");
+        navigate('/');
+      }
+    } else if (data) {
       try {
         setConfig(JSON.parse(decodeURIComponent(data)));
       } catch (e) {
@@ -49,8 +64,9 @@ export default function ViewLock() {
     } else {
       // Second click: Verify
       const clickTime = clickedTasks[task.id];
+      const isYoutubeWatchAndLike = task.platform === 'youtube' && task.action === 'İzle ve Beğen';
       const isYoutubeWatch = task.platform === 'youtube' && task.action === 'İzle';
-      const requiredTime = isYoutubeWatch ? 60000 : 2000;
+      const requiredTime = isYoutubeWatchAndLike ? 30000 : (isYoutubeWatch ? 60000 : 2000);
       
       const timeElapsed = Date.now() - clickTime;
       
@@ -73,7 +89,18 @@ export default function ViewLock() {
           return next;
         });
 
-        if (isYoutubeWatch && timeElapsed < requiredTime) {
+        if (isYoutubeWatchAndLike && timeElapsed < requiredTime) {
+           setTaskErrors(prev => ({
+             ...prev,
+             [task.id]: 'Lütfen videoyu en az 30 saniye izleyin ve beğenin.'
+           }));
+           // Reset click state so they have to click the link again
+           setClickedTasks(prev => {
+             const next = { ...prev };
+             delete next[task.id];
+             return next;
+           });
+        } else if (isYoutubeWatch && timeElapsed < requiredTime) {
            setTaskErrors(prev => ({
              ...prev,
              [task.id]: 'Lütfen videoyu en az 1 dakika izleyin.'
@@ -106,13 +133,10 @@ export default function ViewLock() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 py-12 px-4 sm:px-6 flex items-center justify-center font-sans">
-      <div className="max-w-md w-full bg-zinc-900 rounded-[3rem] shadow-2xl border-8 border-zinc-800 overflow-hidden relative">
-        
-        {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-zinc-800 rounded-b-2xl z-10"></div>
+      <div className="max-w-md w-full bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-800 overflow-hidden relative">
 
         {/* Header Area */}
-        <div className="p-8 pt-12 text-center border-b border-zinc-800 bg-zinc-950/50">
+        <div className="p-8 text-center border-b border-zinc-800 bg-zinc-950/50">
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
              {allTasksCompleted ? (
                <Unlock className="w-8 h-8 text-red-500" />

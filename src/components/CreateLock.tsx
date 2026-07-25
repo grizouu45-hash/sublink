@@ -4,12 +4,13 @@ import { Edit2, Link2, Plus, Rocket, Share2, Copy, CheckCircle2, X } from 'lucid
 import { PlatformId, LockConfig, Task } from '../types';
 import { platforms, MAX_TASKS } from '../data';
 import { cn } from '../lib/utils';
+import LZString from 'lz-string';
 
 export default function CreateLock() {
   const navigate = useNavigate();
   const [config, setConfig] = useState<LockConfig>({
     title: 'OYUN ADI BURAYA',
-    description: ' ŞARTLARI YERİNE GETİRİN VE AÇILAN LİNKE GİDİN',
+    description: 'LİNKE ULAŞMAK İÇİN GÖREVLERİ TAMAMLAYIN!',
     targetUrl: '',
     buttonText: 'LİNK HAZIR!',
     tasks: [
@@ -78,8 +79,8 @@ export default function CreateLock() {
     localStorage.setItem('urlHistory', JSON.stringify(newHistory));
 
     const finalConfig = { ...config, rating: randomRating, downloads };
-    const encodedConfig = encodeURIComponent(JSON.stringify(finalConfig));
-    const link = `${window.location.origin}/view?data=${encodedConfig}`;
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(finalConfig));
+    const link = `${window.location.origin}/view?c=${compressed}`;
     setGeneratedLink(link);
   };
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Youtube, Instagram, Facebook, Twitter, Link2, Send, MessageCircle, Gamepad2, Twitch, MessageSquare, Phone, Ghost } from 'lucide-react';
-import { PlatformId } from '../types';
+import { PlatformId } from './types';
 
 const TiktokIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 448 512" fill="currentColor">
@@ -9,7 +9,7 @@ const TiktokIcon = ({ className }: { className?: string }) => (
 );
 
 export const platforms: { id: PlatformId; name: string; icon: React.ReactNode; actions: string[] }[] = [
-  { id: 'youtube', name: 'YouTube', icon: <Youtube className="w-6 h-6 text-red-500" />, actions: ['Abone Ol', 'Beğen', 'İzle'] },
+  { id: 'youtube', name: 'YouTube', icon: <Youtube className="w-6 h-6 text-red-500" />, actions: ['Abone Ol', 'İzle ve Beğen', 'Beğen', 'İzle'] },
   { id: 'instagram', name: 'Instagram', icon: <Instagram className="w-6 h-6 text-pink-500" />, actions: ['Takip Et', 'Beğen', 'Yorum Yap'] },
   { id: 'facebook', name: 'Facebook', icon: <Facebook className="w-6 h-6 text-blue-600" />, actions: ['Takip Et', 'Beğen', 'Paylaş'] },
   { id: 'twitter', name: 'Twitter', icon: <Twitter className="w-6 h-6 text-sky-500" />, actions: ['Takip Et', 'Retweetle', 'Beğen'] },
