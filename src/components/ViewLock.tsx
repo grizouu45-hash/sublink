@@ -254,8 +254,9 @@ export default function ViewLock() {
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-[9px] text-zinc-600 font-medium uppercase tracking-widest">Link Oluştur ile oluşturuldu</p>
+          <div className="mt-6 text-center flex flex-col items-center justify-center gap-2">
+            <img src="/sublinklogo.webp" alt="SUBLİNKFEMU" className="w-6 h-6 opacity-50 grayscale hover:grayscale-0 transition-all" />
+            <p className="text-[9px] text-zinc-600 font-medium uppercase tracking-widest">SUBLİNKFEMU ile oluşturuldu</p>
           </div>
         </div>
 

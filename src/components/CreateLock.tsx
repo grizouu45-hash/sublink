@@ -131,10 +131,10 @@ export default function CreateLock() {
         
         <div className="text-center mb-10">
           <h1 className="text-2xl md:text-3xl font-bold flex items-center justify-center gap-3 mb-2 text-white">
-            <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center shadow-lg shadow-red-600/20">
-              <Edit2 className="text-white w-6 h-6" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
+              <img src="/sublinklogo.webp" alt="SUBLİNKFEMU Logo" className="w-full h-full object-cover" />
             </div>
-            Link Oluştur
+            SUBLİNKFEMU
           </h1>
           <p className="text-zinc-400 text-sm md:text-base">
             Maksimum büyüme için {MAX_TASKS}'a kadar sosyal medya platformu ekleyin
