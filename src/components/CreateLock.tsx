@@ -91,10 +91,11 @@ export default function CreateLock() {
       try {
         const res = await fetch('https://clck.ru/--', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
           body: 'url=' + encodeURIComponent(longLink)
         });
-        
         if (res.ok) {
           const shortUrl = await res.text();
           if (shortUrl) {
