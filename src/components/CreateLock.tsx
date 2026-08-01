@@ -89,26 +89,19 @@ export default function CreateLock() {
       let finalLink = longLink;
       
       try {
-        // Try is.gd first
-        const isGdRes = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longLink)}`);
-        const isGdData = await isGdRes.json();
-        if (isGdData.shorturl) {
-          finalLink = isGdData.shorturl;
-        } else {
-          throw new Error('is.gd failed');
+        const res = await fetch('/api/shorten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: longLink })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.shortUrl) {
+            finalLink = data.shortUrl;
+          }
         }
       } catch (err) {
-        try {
-          // Fallback to tinyurl with corsproxy
-          const tinyUrlReq = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longLink)}`;
-          const proxyRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(tinyUrlReq)}`);
-          const shortUrl = await proxyRes.text();
-          if (shortUrl && shortUrl.startsWith('http')) {
-            finalLink = shortUrl;
-          }
-        } catch (fallbackErr) {
-          console.warn('URL shortening failed, using long link');
-        }
+        console.warn('URL shortening failed, using long link');
       }
 
       setGeneratedLink(finalLink);

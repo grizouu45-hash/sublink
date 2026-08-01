@@ -23,4 +23,4 @@ export const platforms: { id: PlatformId; name: string; icon: React.ReactNode; a
   { id: 'snapchat', name: 'Snapchat', icon: <Ghost className="w-6 h-6 text-yellow-400" />, actions: ['Arkadaş Ekle', 'Abone Ol'] },
 ];
 
-export const MAX_TASKS = 10;
+export const MAX_TASKS = 15;

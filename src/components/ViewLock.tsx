@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LockConfig, Task } from '../types';
 import { platforms } from '../data';
-import { CheckCircle2, Lock, Unlock, Link2, Loader2, Star, Download } from 'lucide-react';
+import { CheckCircle2, Lock, Unlock, Link2, Loader2, Star, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 import LZString from 'lz-string';
 
@@ -15,6 +15,70 @@ export default function ViewLock() {
   const [verifyingTasks, setVerifyingTasks] = useState<Set<string>>(new Set());
   const [taskErrors, setTaskErrors] = useState<Record<string, string>>({});
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, channel: typeof FIXED_CHANNELS[0]) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Reset input
+    event.target.value = '';
+
+    setVerifyingTasks(prev => new Set(prev).add(channel.id));
+    setTaskErrors(prev => {
+      const next = { ...prev };
+      delete next[channel.id];
+      return next;
+    });
+
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        
+        try {
+          const res = await fetch('/api/verify-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64, channelName: channel.name })
+          });
+          
+          const data = await res.json();
+          
+          if (res.ok && data.verified) {
+            setCompletedTasks(prev => new Set(prev).add(channel.id));
+          } else {
+            setTaskErrors(prev => ({ ...prev, [channel.id]: 'Ekran görüntüsü doğrulanamadı. Abone olduğunuza emin misiniz?' }));
+          }
+        } catch (err) {
+          setTaskErrors(prev => ({ ...prev, [channel.id]: 'Doğrulama servisine ulaşılamadı, tekrar deneyin.' }));
+        } finally {
+          setVerifyingTasks(prev => {
+            const next = new Set(prev);
+            next.delete(channel.id);
+            return next;
+          });
+        }
+      };
+      
+      reader.onerror = () => {
+        setTaskErrors(prev => ({ ...prev, [channel.id]: 'Dosya okunamadı.' }));
+        setVerifyingTasks(prev => {
+          const next = new Set(prev);
+          next.delete(channel.id);
+          return next;
+        });
+      }
+    } catch (err) {
+      setTaskErrors(prev => ({ ...prev, [channel.id]: 'Bir hata oluştu.' }));
+      setVerifyingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(channel.id);
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -47,9 +111,28 @@ export default function ViewLock() {
 
   if (!config) return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">Yükleniyor...</div>;
 
-  const allTasksCompleted = completedTasks.size === config.tasks.length;
+  const allTasksCompleted = completedTasks.size === (config.tasks.length + 2);
 
-  const handleTaskClick = (task: Task) => {
+  const FIXED_CHANNELS = [
+    {
+      id: 'fixed-21muhammed09',
+      platform: 'youtube',
+      action: 'Abone Ol',
+      url: 'https://www.youtube.com/@21MUHAMMED09',
+      name: '21MUHAMMED09',
+      avatar: 'https://unavatar.io/youtube/@21MUHAMMED09'
+    },
+    {
+      id: 'fixed-aveniragames',
+      platform: 'youtube',
+      action: 'Abone Ol',
+      url: 'https://www.youtube.com/@AVENIRAGAMES',
+      name: 'AVENIRAGAMES',
+      avatar: 'https://unavatar.io/youtube/@AVENIRAGAMES'
+    }
+  ];
+
+  const handleTaskClick = (task: Task | typeof FIXED_CHANNELS[0]) => {
     if (completedTasks.has(task.id) || verifyingTasks.has(task.id)) return;
 
     if (!clickedTasks[task.id]) {
@@ -61,10 +144,17 @@ export default function ViewLock() {
         delete next[task.id];
         return next;
       });
-    } else {
-      // Second click: Verify
-      const clickTime = clickedTasks[task.id];
-      const isYoutubeWatchAndLike = task.platform === 'youtube' && task.action === 'İzle ve Beğen';
+      return;
+    } 
+
+    if (task.id.startsWith('fixed-')) {
+      fileInputRefs.current[task.id]?.click();
+      return;
+    }
+
+    // Second click for normal tasks: Verify
+    const clickTime = clickedTasks[task.id];
+    const isYoutubeWatchAndLike = task.platform === 'youtube' && task.action === 'İzle ve Beğen';
       const isYoutubeWatch = task.platform === 'youtube' && task.action === 'İzle';
       const requiredTime = isYoutubeWatchAndLike ? 30000 : (isYoutubeWatch ? 60000 : 2000);
       
@@ -119,7 +209,6 @@ export default function ViewLock() {
            });
         }
       }, 1500);
-    }
   };
 
   const handleUnlock = () => {
@@ -155,6 +244,65 @@ export default function ViewLock() {
           <p className="text-[11px] font-medium text-zinc-500 text-center mb-6 uppercase tracking-wider">
             Kilidi açmak için aşağıdaki adımları tamamlayın
           </p>
+
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {FIXED_CHANNELS.map(channel => {
+              const isCompleted = completedTasks.has(channel.id);
+              const isClicked = !!clickedTasks[channel.id];
+              const isVerifying = verifyingTasks.has(channel.id);
+              const taskError = taskErrors[channel.id];
+              
+              return (
+                <div key={channel.id} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={el => fileInputRefs.current[channel.id] = el}
+                    onChange={(e) => handleFileUpload(e, channel)}
+                  />
+                  <div className="w-20 h-20 mb-3 rounded-3xl overflow-hidden bg-zinc-900 border border-zinc-800">
+                    <img src={channel.avatar} alt={channel.name} className={cn("w-full h-full object-cover", isCompleted && "opacity-50 grayscale")} />
+                  </div>
+                  <span className={cn("font-bold text-sm mb-3 truncate w-full", isCompleted ? "text-zinc-500 line-through" : "text-white")}>{channel.name}</span>
+                  
+                  <button
+                    onClick={() => handleTaskClick(channel as any)}
+                    disabled={isCompleted || isVerifying}
+                    className={cn(
+                      "w-full py-2 px-4 rounded-xl font-bold text-sm transition-all shadow-lg",
+                      isCompleted 
+                        ? "bg-zinc-900 text-zinc-500 cursor-default shadow-none" 
+                        : "bg-red-600 hover:bg-red-500 text-white shadow-red-600/20"
+                    )}
+                  >
+                    {isCompleted ? (
+                      <span className="flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" /> Tamamlandı</span>
+                    ) : isVerifying ? (
+                      <span className="flex items-center justify-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Doğrulanıyor...</span>
+                    ) : isClicked ? (
+                      <span className="flex items-center justify-center gap-1"><Upload className="w-4 h-4" /> SS Yükle</span>
+                    ) : (
+                      "Abone Ol"
+                    )}
+                  </button>
+                  {isClicked && !isCompleted && !isVerifying && (
+                    <button
+                      onClick={() => window.open(channel.url, '_blank', 'noopener,noreferrer')}
+                      className="w-full mt-2 py-2 px-4 rounded-xl font-bold text-xs bg-zinc-800 hover:bg-zinc-700 text-white transition-all shadow-lg"
+                    >
+                      Abone Ol
+                    </button>
+                  )}
+                  {taskError && (
+                    <span className="block text-[10px] text-red-500 mt-2 leading-tight">
+                      {taskError}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
           <div className="space-y-3">
             {config.tasks.map((task, index) => {
