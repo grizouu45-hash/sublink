@@ -17,6 +17,42 @@ export default function ViewLock() {
   const [isUnlocking, setIsUnlocking] = useState(false);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, channel: typeof FIXED_CHANNELS[0]) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -32,46 +68,24 @@ export default function ViewLock() {
     });
 
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        
-        try {
-          const res = await fetch('/api/verify-subscription', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64, channelName: channel.name })
-          });
-          
-          const data = await res.json();
-          
-          if (res.ok && data.verified) {
-            setCompletedTasks(prev => new Set(prev).add(channel.id));
-          } else {
-            setTaskErrors(prev => ({ ...prev, [channel.id]: 'Ekran görüntüsü doğrulanamadı. Abone olduğunuza emin misiniz?' }));
-          }
-        } catch (err) {
-          setTaskErrors(prev => ({ ...prev, [channel.id]: 'Doğrulama servisine ulaşılamadı, tekrar deneyin.' }));
-        } finally {
-          setVerifyingTasks(prev => {
-            const next = new Set(prev);
-            next.delete(channel.id);
-            return next;
-          });
-        }
-      };
+      const base64 = await compressImage(file);
       
-      reader.onerror = () => {
-        setTaskErrors(prev => ({ ...prev, [channel.id]: 'Dosya okunamadı.' }));
-        setVerifyingTasks(prev => {
-          const next = new Set(prev);
-          next.delete(channel.id);
-          return next;
-        });
+      const res = await fetch('/api/verify-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, channelName: channel.name })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.verified) {
+        setCompletedTasks(prev => new Set(prev).add(channel.id));
+      } else {
+        setTaskErrors(prev => ({ ...prev, [channel.id]: 'Ekran görüntüsü doğrulanamadı. Abone olduğunuza emin misiniz?' }));
       }
     } catch (err) {
-      setTaskErrors(prev => ({ ...prev, [channel.id]: 'Bir hata oluştu.' }));
+      setTaskErrors(prev => ({ ...prev, [channel.id]: 'Doğrulama servisine ulaşılamadı veya dosya çok büyük. Tekrar deneyin.' }));
+    } finally {
       setVerifyingTasks(prev => {
         const next = new Set(prev);
         next.delete(channel.id);
