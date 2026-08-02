@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LockConfig, Task } from '../types';
 import { platforms } from '../data';
-import { CheckCircle2, Lock, Unlock, Link2, Star, Download } from 'lucide-react';
+import { CheckCircle2, Lock, Unlock, Link2, Loader2, Star, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import LZString from 'lz-string';
 
@@ -11,6 +11,9 @@ export default function ViewLock() {
   const navigate = useNavigate();
   const [config, setConfig] = useState<LockConfig | null>(null);
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const [clickedTasks, setClickedTasks] = useState<Record<string, number>>({});
+  const [verifyingTasks, setVerifyingTasks] = useState<Set<string>>(new Set());
+  const [taskErrors, setTaskErrors] = useState<Record<string, string>>({});
   const [isUnlocking, setIsUnlocking] = useState(false);
 
   useEffect(() => {
@@ -66,15 +69,77 @@ export default function ViewLock() {
   ];
 
   const handleTaskClick = (task: Task | typeof FIXED_CHANNELS[0]) => {
-    if (completedTasks.has(task.id)) return;
-    
-    window.open(task.url, '_blank', 'noopener,noreferrer');
-    
-    setCompletedTasks(prev => {
-      const next = new Set(prev);
-      next.add(task.id);
-      return next;
-    });
+    if (completedTasks.has(task.id) || verifyingTasks.has(task.id)) return;
+
+    if (!clickedTasks[task.id]) {
+      // First click: Open link and mark as clicked
+      window.open(task.url, '_blank', 'noopener,noreferrer');
+      setClickedTasks(prev => ({ ...prev, [task.id]: Date.now() }));
+      setTaskErrors(prev => {
+        const next = { ...prev };
+        delete next[task.id];
+        return next;
+      });
+      return;
+    } 
+
+    // Second click for normal tasks: Verify
+    const clickTime = clickedTasks[task.id];
+    const isYoutubeWatchAndLike = task.platform === 'youtube' && task.action === 'İzle ve Beğen';
+      const isYoutubeWatch = task.platform === 'youtube' && task.action === 'İzle';
+      const requiredTime = isYoutubeWatchAndLike ? 30000 : (isYoutubeWatch ? 60000 : 2000);
+      
+      const timeElapsed = Date.now() - clickTime;
+      
+      setVerifyingTasks(prev => {
+        const next = new Set(prev);
+        next.add(task.id);
+        return next;
+      });
+
+      setTaskErrors(prev => {
+        const next = { ...prev };
+        delete next[task.id];
+        return next;
+      });
+
+      setTimeout(() => {
+        setVerifyingTasks(prev => {
+          const next = new Set(prev);
+          next.delete(task.id);
+          return next;
+        });
+
+        if (isYoutubeWatchAndLike && timeElapsed < requiredTime) {
+           setTaskErrors(prev => ({
+             ...prev,
+             [task.id]: 'Lütfen videoyu en az 30 saniye izleyin ve beğenin.'
+           }));
+           // Reset click state so they have to click the link again
+           setClickedTasks(prev => {
+             const next = { ...prev };
+             delete next[task.id];
+             return next;
+           });
+        } else if (isYoutubeWatch && timeElapsed < requiredTime) {
+           setTaskErrors(prev => ({
+             ...prev,
+             [task.id]: 'Lütfen videoyu en az 1 dakika izleyin.'
+           }));
+           // Reset click state so they have to click the link again
+           setClickedTasks(prev => {
+             const next = { ...prev };
+             delete next[task.id];
+             return next;
+           });
+        } else {
+           setCompletedTasks(prev => {
+             const next = new Set(prev);
+             next.add(task.id);
+             return next;
+           });
+        }
+      }, 1500);
   };
 
   const handleUnlock = () => {
@@ -114,6 +179,9 @@ export default function ViewLock() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             {FIXED_CHANNELS.map(channel => {
               const isCompleted = completedTasks.has(channel.id);
+              const isClicked = !!clickedTasks[channel.id];
+              const isVerifying = verifyingTasks.has(channel.id);
+              const taskError = taskErrors[channel.id];
               
               return (
                 <div key={channel.id} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg relative">
@@ -124,7 +192,7 @@ export default function ViewLock() {
                   
                   <button
                     onClick={() => handleTaskClick(channel as any)}
-                    disabled={isCompleted}
+                    disabled={isCompleted || isVerifying}
                     className={cn(
                       "w-full py-2 px-4 rounded-xl font-bold text-sm transition-all shadow-lg",
                       isCompleted 
@@ -134,10 +202,19 @@ export default function ViewLock() {
                   >
                     {isCompleted ? (
                       <span className="flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" /> Tamamlandı</span>
+                    ) : isVerifying ? (
+                      <span className="flex items-center justify-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Doğrulanıyor...</span>
+                    ) : isClicked ? (
+                      "Doğrula"
                     ) : (
                       "Abone Ol"
                     )}
                   </button>
+                  {taskError && (
+                    <span className="block text-[10px] text-red-500 mt-2 leading-tight">
+                      {taskError}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -147,12 +224,15 @@ export default function ViewLock() {
             {config.tasks.map((task, index) => {
               const platform = platforms.find(p => p.id === task.platform);
               const isCompleted = completedTasks.has(task.id);
+              const isClicked = !!clickedTasks[task.id];
+              const isVerifying = verifyingTasks.has(task.id);
+              const taskError = taskErrors[task.id];
 
               return (
                 <button
                   key={task.id}
                   onClick={() => handleTaskClick(task)}
-                  disabled={isCompleted}
+                  disabled={isCompleted || isVerifying}
                   className={cn(
                     "w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group",
                     isCompleted 
@@ -172,16 +252,25 @@ export default function ViewLock() {
                         "block font-bold text-sm",
                         isCompleted ? "text-zinc-500 line-through" : "text-white"
                       )}>
-                        {task.action}
+                        {isVerifying ? "Doğrulanıyor..." : isClicked ? "Doğrula" : task.action}
                       </span>
-                      <span className="block text-xs text-zinc-400">
-                        {platform?.name}
-                      </span>
+                      {taskError ? (
+                        <span className="block text-xs text-red-500 mt-1">
+                          {taskError}
+                        </span>
+                      ) : (
+                        <span className="block text-xs text-zinc-400">
+                          {platform?.name}
+                        </span>
+                      )}
                     </div>
                   </div>
+
                   <div className="flex-shrink-0">
                     {isCompleted ? (
                       <CheckCircle2 className="w-6 h-6 text-red-500" />
+                    ) : isVerifying ? (
+                      <Loader2 className="w-6 h-6 text-zinc-500 animate-spin" />
                     ) : (
                       <div className="w-6 h-6 rounded-full border-2 border-zinc-700 group-hover:border-zinc-500" />
                     )}
