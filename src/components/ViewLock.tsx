@@ -56,7 +56,7 @@ export default function ViewLock() {
       action: 'Abone Ol',
       url: 'https://www.youtube.com/@21MUHAMMED09',
       name: '21MUHAMMED09',
-      avatar: 'https://unavatar.io/youtube/@21MUHAMMED09'
+      avatar: 'https://yt3.googleusercontent.com/m5NxS2973U4GHvfMST-KPiPRLobMFwQECMKw6cEjRQNGqCRpxSsz9dJbVQ0Hu62pJoAIRsnAmw=s900-c-k-c0x00ffffff-no-rj'
     },
     {
       id: 'fixed-aveniragames',
@@ -64,7 +64,7 @@ export default function ViewLock() {
       action: 'Abone Ol',
       url: 'https://www.youtube.com/@AVENIRAGAMES',
       name: 'AVENIRAGAMES',
-      avatar: 'https://unavatar.io/youtube/@AVENIRAGAMES'
+      avatar: 'https://yt3.googleusercontent.com/zsDrwyIfA2bLyCKtmlwZgex4cuoR8udc4-5FWLXr1coCTYsqtM_20M-5PzSY_LZjM0bOGN_JOQ=s900-c-k-c0x00ffffff-no-rj'
     }
   ];
 
@@ -87,7 +87,8 @@ export default function ViewLock() {
     const clickTime = clickedTasks[task.id];
     const isYoutubeWatchAndLike = task.platform === 'youtube' && task.action === 'İzle ve Beğen';
       const isYoutubeWatch = task.platform === 'youtube' && task.action === 'İzle';
-      const requiredTime = isYoutubeWatchAndLike ? 30000 : (isYoutubeWatch ? 60000 : 2000);
+      const isYoutubeWatchLikeHype = task.platform === 'youtube' && task.action === 'İzle + Beğen + Hype';
+      const requiredTime = (isYoutubeWatchAndLike || isYoutubeWatchLikeHype) ? 30000 : (isYoutubeWatch ? 60000 : 2000);
       
       const timeElapsed = Date.now() - clickTime;
       
@@ -110,10 +111,10 @@ export default function ViewLock() {
           return next;
         });
 
-        if (isYoutubeWatchAndLike && timeElapsed < requiredTime) {
+        if ((isYoutubeWatchAndLike || isYoutubeWatchLikeHype) && timeElapsed < requiredTime) {
            setTaskErrors(prev => ({
              ...prev,
-             [task.id]: 'Lütfen videoyu en az 30 saniye izleyin ve beğenin.'
+             [task.id]: isYoutubeWatchLikeHype ? 'Lütfen videoyu en az 30 saniye izleyin, beğenin ve hype atın.' : 'Lütfen videoyu en az 30 saniye izleyin ve beğenin.'
            }));
            // Reset click state so they have to click the link again
            setClickedTasks(prev => {

@@ -9,7 +9,7 @@ const TiktokIcon = ({ className }: { className?: string }) => (
 );
 
 export const platforms: { id: PlatformId; name: string; icon: React.ReactNode; actions: string[] }[] = [
-  { id: 'youtube', name: 'YouTube', icon: <Youtube className="w-6 h-6 text-red-500" />, actions: ['Abone Ol', 'İzle ve Beğen', 'Beğen', 'İzle'] },
+  { id: 'youtube', name: 'YouTube', icon: <Youtube className="w-6 h-6 text-red-500" />, actions: ['Abone Ol', 'İzle ve Beğen', 'Beğen', 'İzle', 'İzle + Beğen + Hype'] },
   { id: 'instagram', name: 'Instagram', icon: <Instagram className="w-6 h-6 text-pink-500" />, actions: ['Takip Et', 'Beğen', 'Yorum Yap'] },
   { id: 'facebook', name: 'Facebook', icon: <Facebook className="w-6 h-6 text-blue-600" />, actions: ['Takip Et', 'Beğen', 'Paylaş'] },
   { id: 'twitter', name: 'Twitter', icon: <Twitter className="w-6 h-6 text-sky-500" />, actions: ['Takip Et', 'Retweetle', 'Beğen'] },

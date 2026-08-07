@@ -89,15 +89,11 @@ export default function CreateLock() {
       let finalLink = longLink;
       
       try {
-        const res = await fetch('/api/shorten', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: longLink })
-        });
+        const res = await fetch(`https://clck.ru/--?url=${encodeURIComponent(longLink)}`);
         if (res.ok) {
-          const data = await res.json();
-          if (data.shortUrl) {
-            finalLink = data.shortUrl;
+          const text = await res.text();
+          if (text) {
+            finalLink = text;
           }
         }
       } catch (err) {
